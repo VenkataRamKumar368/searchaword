@@ -1,0 +1,2 @@
+-- Baseline migration
+-- This tells Flyway to mark current schema as baseline

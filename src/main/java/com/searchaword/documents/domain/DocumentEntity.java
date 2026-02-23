@@ -1,5 +1,6 @@
 package com.searchaword.documents.domain;
 
+import com.searchaword.security.entity.User; // 🔥 adjust package if needed
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -35,22 +36,68 @@ public class DocumentEntity {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public Long getId() { return id; }
+    // 🔥🔥🔥 NEW FIELD FOR PHASE 7
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User owner;
 
-    public String getOriginalFileName() { return originalFileName; }
-    public void setOriginalFileName(String originalFileName) { this.originalFileName = originalFileName; }
+    // ========================
+    // Getters & Setters
+    // ========================
 
-    public String getContentType() { return contentType; }
-    public void setContentType(String contentType) { this.contentType = contentType; }
+    public Long getId() {
+        return id;
+    }
 
-    public Long getFileSize() { return fileSize; }
-    public void setFileSize(Long fileSize) { this.fileSize = fileSize; }
+    public String getOriginalFileName() {
+        return originalFileName;
+    }
 
-    public String getSha256() { return sha256; }
-    public void setSha256(String sha256) { this.sha256 = sha256; }
+    public void setOriginalFileName(String originalFileName) {
+        this.originalFileName = originalFileName;
+    }
 
-    public String getExtractedText() { return extractedText; }
-    public void setExtractedText(String extractedText) { this.extractedText = extractedText; }
+    public String getContentType() {
+        return contentType;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
+    }
+
+    public Long getFileSize() {
+        return fileSize;
+    }
+
+    public void setFileSize(Long fileSize) {
+        this.fileSize = fileSize;
+    }
+
+    public String getSha256() {
+        return sha256;
+    }
+
+    public void setSha256(String sha256) {
+        this.sha256 = sha256;
+    }
+
+    public String getExtractedText() {
+        return extractedText;
+    }
+
+    public void setExtractedText(String extractedText) {
+        this.extractedText = extractedText;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
+    }
 }

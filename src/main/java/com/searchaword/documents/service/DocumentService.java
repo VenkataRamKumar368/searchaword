@@ -6,11 +6,15 @@ import com.searchaword.documents.dto.DocumentListResponse;
 import com.searchaword.documents.repository.DocumentRepository;
 import com.searchaword.documents.util.HashUtil;
 import com.searchaword.service.extract.TextExtractService;
+import com.searchaword.security.entity.User;
+import com.searchaword.security.repository.UserRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -29,15 +33,43 @@ public class DocumentService {
 
     private final DocumentRepository documentRepository;
     private final TextExtractService textExtractService;
+    private final UserRepository userRepository;
 
     public DocumentService(DocumentRepository documentRepository,
-                           TextExtractService textExtractService) {
+                           TextExtractService textExtractService,
+                           UserRepository userRepository) {
         this.documentRepository = documentRepository;
         this.textExtractService = textExtractService;
+        this.userRepository = userRepository;
     }
 
     // ============================================
-    // Upload + Hash + Cache + Persist
+    // Helper: Get Logged-in User
+    // ============================================
+
+    private User getCurrentUser() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "User not authenticated"
+            );
+        }
+
+        String username = authentication.getName();
+
+        return userRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "User not found"
+                        ));
+    }
+
+    // ============================================
+    // Upload + Assign Owner
     // ============================================
 
     public DocumentUploadResponse uploadAndExtract(MultipartFile file) {
@@ -48,6 +80,8 @@ public class DocumentService {
                     "File cannot be empty"
             );
         }
+
+        User currentUser = getCurrentUser();
 
         String sha256;
 
@@ -60,11 +94,10 @@ public class DocumentService {
             );
         }
 
-        var existingDoc = documentRepository.findBySha256(sha256);
+        var existingDoc = documentRepository.findBySha256AndOwner(sha256, currentUser);
 
         if (existingDoc.isPresent()) {
             var doc = existingDoc.get();
-
             return new DocumentUploadResponse(
                     doc.getId(),
                     doc.getOriginalFileName(),
@@ -82,6 +115,7 @@ public class DocumentService {
         doc.setFileSize(file.getSize());
         doc.setSha256(sha256);
         doc.setExtractedText(extractedText);
+        doc.setOwner(currentUser); // 🔥 OWNER ASSIGNED
 
         DocumentEntity saved = documentRepository.save(doc);
 
@@ -95,12 +129,15 @@ public class DocumentService {
     }
 
     // ============================================
-    // List Documents
+    // List Documents (OWNER ONLY)
     // ============================================
 
     public List<DocumentListResponse> listDocuments() {
 
-        return documentRepository.findAllByOrderByCreatedAtDesc()
+        User currentUser = getCurrentUser();
+
+        return documentRepository
+                .findAllByOwnerOrderByCreatedAtDesc(currentUser)
                 .stream()
                 .map(doc -> new DocumentListResponse(
                         doc.getId(),
@@ -112,16 +149,19 @@ public class DocumentService {
     }
 
     // ============================================
-    // Get Document By ID
+    // Get Document By ID (OWNER CHECK)
     // ============================================
 
     public DocumentUploadResponse getDocumentById(Long id) {
 
-        DocumentEntity doc = documentRepository.findById(id)
+        User currentUser = getCurrentUser();
+
+        DocumentEntity doc = documentRepository
+                .findByIdAndOwner(id, currentUser)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
-                                "Document not found with id: " + id
+                                "Document not found"
                         ));
 
         return new DocumentUploadResponse(
@@ -134,7 +174,7 @@ public class DocumentService {
     }
 
     // ============================================
-    // Letter-Based Word Search
+    // Letter Search (OWNER CHECK)
     // ============================================
 
     public List<String> searchWordsByLetters(Long id, String letters) {
@@ -146,11 +186,14 @@ public class DocumentService {
             );
         }
 
-        DocumentEntity doc = documentRepository.findById(id)
+        User currentUser = getCurrentUser();
+
+        DocumentEntity doc = documentRepository
+                .findByIdAndOwner(id, currentUser)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
-                                "Document not found with id: " + id
+                                "Document not found"
                         ));
 
         String content = doc.getExtractedText();
@@ -176,7 +219,7 @@ public class DocumentService {
     }
 
     // ============================================
-    // Generate TXT or PDF for Letter Search
+    // Generate File (OWNER SAFE)
     // ============================================
 
     public byte[] generateLetterSearchFile(Long id,

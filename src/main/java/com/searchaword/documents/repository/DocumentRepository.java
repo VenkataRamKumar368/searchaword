@@ -1,6 +1,7 @@
 package com.searchaword.documents.repository;
 
 import com.searchaword.documents.domain.DocumentEntity;
+import com.searchaword.security.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -8,9 +9,21 @@ import java.util.List;
 
 public interface DocumentRepository extends JpaRepository<DocumentEntity, Long> {
 
-    Optional<DocumentEntity> findBySha256(String sha256);
+    // ============================================
+    // Owner-aware SHA256 lookup
+    // ============================================
 
-    List<DocumentEntity> findAllByOrderByCreatedAtDesc();
+    Optional<DocumentEntity> findBySha256AndOwner(String sha256, User owner);
 
-    Optional<DocumentEntity> findById(Long id);
+    // ============================================
+    // Owner-aware listing
+    // ============================================
+
+    List<DocumentEntity> findAllByOwnerOrderByCreatedAtDesc(User owner);
+
+    // ============================================
+    // Owner-aware ID lookup
+    // ============================================
+
+    Optional<DocumentEntity> findByIdAndOwner(Long id, User owner);
 }
