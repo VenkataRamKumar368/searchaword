@@ -19,6 +19,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
     open-in-view: false
+    show-sql: false
 
   flyway:
     enabled: true
@@ -26,8 +27,17 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
 
+  # 🔥 Disable Spring default security user
+  security:
+    user:
+      name: ""
+      password: ""
+
 server:
   port: ${PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
 
 management:
   endpoints:
@@ -38,3 +48,10 @@ management:
     health:
       probes:
         enabled: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: ERROR
+    org.springframework.web: INFO
