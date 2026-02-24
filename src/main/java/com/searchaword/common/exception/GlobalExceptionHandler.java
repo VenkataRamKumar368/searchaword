@@ -3,13 +3,33 @@ package com.searchaword.common.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // ============================================
+    // Handle Max Upload Size Exceeded (VERY IMPORTANT)
+    // ============================================
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex,
+            HttpServletRequest request
+    ) {
+
+        ApiError error = new ApiError(
+                HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                HttpStatus.PAYLOAD_TOO_LARGE.getReasonPhrase(),
+                "File too large. Maximum allowed size is 3MB.",
+                request.getRequestURI()
+        );
+
+        return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+    }
 
     // ============================================
     // Handle ResponseStatusException

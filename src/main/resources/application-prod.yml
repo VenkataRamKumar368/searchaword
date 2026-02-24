@@ -27,6 +27,12 @@ spring:
     locations: classpath:db/migration
     validate-on-migrate: true
 
+  # 🔥 LIMIT FILE UPLOAD SIZE (VERY IMPORTANT FOR RENDER FREE TIER)
+  servlet:
+    multipart:
+      max-file-size: 3MB
+      max-request-size: 3MB
+
   # 🔥 Disable Spring default security user
   security:
     user:
