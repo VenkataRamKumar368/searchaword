@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
 @Service
 public class DocumentService {
 
+    private static final long MAX_FILE_SIZE = 10_000_000; // 10MB safe limit
+
     private final DocumentRepository documentRepository;
     private final TextExtractService textExtractService;
     private final UserRepository userRepository;
@@ -48,6 +50,7 @@ public class DocumentService {
     // ============================================
 
     private User getCurrentUser() {
+
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
 
@@ -58,9 +61,7 @@ public class DocumentService {
             );
         }
 
-        String username = authentication.getName();
-
-        return userRepository.findByUsername(username)
+        return userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
@@ -69,7 +70,7 @@ public class DocumentService {
     }
 
     // ============================================
-    // Upload + Assign Owner
+    // Upload + Extract (Cloud Safe)
     // ============================================
 
     public DocumentUploadResponse uploadAndExtract(MultipartFile file) {
@@ -78,6 +79,14 @@ public class DocumentService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "File cannot be empty"
+            );
+        }
+
+        // 🔥 Memory Protection (Prevents Render OOM)
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "File too large. Maximum allowed size is 10MB."
             );
         }
 
@@ -94,10 +103,14 @@ public class DocumentService {
             );
         }
 
-        var existingDoc = documentRepository.findBySha256AndOwner(sha256, currentUser);
+        // ✅ Per-user duplicate detection
+        var existingDoc =
+                documentRepository.findBySha256AndOwner(sha256, currentUser);
 
         if (existingDoc.isPresent()) {
+
             var doc = existingDoc.get();
+
             return new DocumentUploadResponse(
                     doc.getId(),
                     doc.getOriginalFileName(),
@@ -107,7 +120,16 @@ public class DocumentService {
             );
         }
 
-        String extractedText = textExtractService.extractText(file);
+        String extractedText;
+
+        try {
+            extractedText = textExtractService.extractText(file);
+        } catch (Exception e) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Failed to extract text. File may be corrupted or too large."
+            );
+        }
 
         DocumentEntity doc = new DocumentEntity();
         doc.setOriginalFileName(file.getOriginalFilename());
@@ -115,7 +137,7 @@ public class DocumentService {
         doc.setFileSize(file.getSize());
         doc.setSha256(sha256);
         doc.setExtractedText(extractedText);
-        doc.setOwner(currentUser); // 🔥 OWNER ASSIGNED
+        doc.setOwner(currentUser);
 
         DocumentEntity saved = documentRepository.save(doc);
 
@@ -174,7 +196,7 @@ public class DocumentService {
     }
 
     // ============================================
-    // Letter Search (OWNER CHECK)
+    // Letter Search
     // ============================================
 
     public List<String> searchWordsByLetters(Long id, String letters) {
@@ -210,16 +232,14 @@ public class DocumentService {
 
         return Arrays.stream(content.toLowerCase().split("\\W+"))
                 .filter(word ->
-                        requiredLetters.stream()
-                                .allMatch(word::contains)
-                )
+                        requiredLetters.stream().allMatch(word::contains))
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
     }
 
     // ============================================
-    // Generate File (OWNER SAFE)
+    // Generate TXT or PDF from Search Results
     // ============================================
 
     public byte[] generateLetterSearchFile(Long id,
@@ -242,13 +262,11 @@ public class DocumentService {
             );
         }
 
-        type = type.toLowerCase();
-
-        switch (type) {
+        switch (type.toLowerCase()) {
 
             case "txt":
-                String content = String.join(System.lineSeparator(), words);
-                return content.getBytes(StandardCharsets.UTF_8);
+                return String.join(System.lineSeparator(), words)
+                        .getBytes(StandardCharsets.UTF_8);
 
             case "pdf":
                 try (PDDocument document = new PDDocument();
@@ -257,21 +275,21 @@ public class DocumentService {
                     PDPage page = new PDPage();
                     document.addPage(page);
 
-                    PDPageContentStream contentStream =
-                            new PDPageContentStream(document, page);
+                    try (PDPageContentStream contentStream =
+                                 new PDPageContentStream(document, page)) {
 
-                    contentStream.setFont(PDType1Font.HELVETICA, 12);
-                    contentStream.beginText();
-                    contentStream.setLeading(14.5f);
-                    contentStream.newLineAtOffset(50, 750);
+                        contentStream.setFont(PDType1Font.HELVETICA, 12);
+                        contentStream.beginText();
+                        contentStream.setLeading(14.5f);
+                        contentStream.newLineAtOffset(50, 750);
 
-                    for (String word : words) {
-                        contentStream.showText(word);
-                        contentStream.newLine();
+                        for (String word : words) {
+                            contentStream.showText(word);
+                            contentStream.newLine();
+                        }
+
+                        contentStream.endText();
                     }
-
-                    contentStream.endText();
-                    contentStream.close();
 
                     document.save(baos);
                     return baos.toByteArray();
