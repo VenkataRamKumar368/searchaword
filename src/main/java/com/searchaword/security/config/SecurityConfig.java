@@ -40,10 +40,10 @@ public class SecurityConfig {
                 // Enable CORS
                 .cors(Customizer.withDefaults())
 
-                // Disable CSRF (JWT-based API)
+                // Disable CSRF (JWT API)
                 .csrf(csrf -> csrf.disable())
 
-                // Stateless session (JWT)
+                // Stateless session (JWT based)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
@@ -51,7 +51,8 @@ public class SecurityConfig {
                 // Authorization rules
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/v1/**").authenticated()
+                        .anyRequest().permitAll()
                 )
 
                 // Custom exception handling
@@ -76,7 +77,8 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
+        // IMPORTANT: use allowedOriginPatterns instead of allowedOrigins
+        configuration.setAllowedOriginPatterns(List.of(
                 "http://localhost:4200",
                 "https://searchaword-frontend.onrender.com"
         ));
@@ -87,7 +89,14 @@ public class SecurityConfig {
 
         configuration.setAllowedHeaders(List.of("*"));
 
+        configuration.setExposedHeaders(List.of(
+                "Authorization",
+                "Content-Disposition"
+        ));
+
         configuration.setAllowCredentials(true);
+
+        configuration.setMaxAge(3600L); // cache preflight 1 hour
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
