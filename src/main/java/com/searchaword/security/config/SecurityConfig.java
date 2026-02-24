@@ -40,21 +40,21 @@ public class SecurityConfig {
                 // Enable CORS
                 .cors(Customizer.withDefaults())
 
-                // Disable CSRF (JWT API)
+                // Disable CSRF (JWT-based API)
                 .csrf(csrf -> csrf.disable())
 
-                // Stateless session (VERY IMPORTANT)
+                // Stateless session (JWT)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
                 // Authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
 
-                // 🔐 Custom Security Exception Handling
+                // Custom exception handling
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(restAuthenticationEntryPoint)
                         .accessDeniedHandler(restAccessDeniedHandler)
@@ -78,7 +78,7 @@ public class SecurityConfig {
 
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:4200",
-                "https://searchaword-ui.onrender.com"
+                "https://searchaword-frontend.onrender.com"
         ));
 
         configuration.setAllowedMethods(List.of(
