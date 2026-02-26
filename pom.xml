@@ -106,15 +106,6 @@
 		</dependency>
 
 		<!-- ========================= -->
-		<!-- TESTING -->
-		<!-- ========================= -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<!-- ========================= -->
 		<!-- FLYWAY MIGRATIONS -->
 		<!-- ========================= -->
 		<dependency>
@@ -127,16 +118,36 @@
 		</dependency>
 
 		<!-- ========================= -->
-		<!-- ACTUATOR (health/metrics) -->
+		<!-- ACTUATOR -->
 		<!-- ========================= -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
+		<!-- ========================= -->
+		<!-- PROMETHEUS METRICS (NEW) -->
+		<!-- ========================= -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
+		<!-- ========================= -->
+		<!-- JACKSON JSR310 -->
+		<!-- ========================= -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.datatype</groupId>
 			<artifactId>jackson-datatype-jsr310</artifactId>
+		</dependency>
+
+		<!-- ========================= -->
+		<!-- TESTING -->
+		<!-- ========================= -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 
 	</dependencies>
