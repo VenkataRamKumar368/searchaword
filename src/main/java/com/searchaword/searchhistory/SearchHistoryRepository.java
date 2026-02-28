@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public interface SearchHistoryRepository extends JpaRepository<SearchHistoryEntity, Long> {
@@ -58,7 +58,7 @@ public interface SearchHistoryRepository extends JpaRepository<SearchHistoryEnti
     long countByUserId(Long userId);
 
     // ============================================
-    // Count searches by type (WORD / LETTER / FULL_TEXT)
+    // Count searches by type
     // ============================================
 
     long countByUserIdAndQueryType(
@@ -113,23 +113,22 @@ public interface SearchHistoryRepository extends JpaRepository<SearchHistoryEnti
     List<SearchTrendProjection> getDailySearchTrends();
 
     // ============================================
-    // 📈 DAILY SEARCH TRENDS (DATE RANGE FILTERED)
+    // 📈 DAILY SEARCH TRENDS (TIMESTAMP RANGE FILTERED)
     // ============================================
 
     @Query(value = """
-    SELECT 
-        DATE(created_at) AS searchDate,
-        COUNT(*) AS totalCount
-    FROM search_history
-    WHERE query_type = 'FULL_TEXT'
-      AND DATE(created_at) >= :fromDate
-      AND DATE(created_at) <= :toDate
-    GROUP BY DATE(created_at)
-    ORDER BY searchDate ASC
-    """, nativeQuery = true)
+        SELECT 
+            DATE(created_at) AS searchDate,
+            COUNT(*) AS totalCount
+        FROM search_history
+        WHERE query_type = 'FULL_TEXT'
+          AND created_at >= :start
+          AND created_at <= :end
+        GROUP BY DATE(created_at)
+        ORDER BY searchDate ASC
+        """, nativeQuery = true)
     List<SearchTrendProjection> getDailySearchTrendsBetween(
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate
+            @Param("start") OffsetDateTime start,
+            @Param("end") OffsetDateTime end
     );
-
 }

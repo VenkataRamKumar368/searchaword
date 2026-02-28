@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -50,9 +50,22 @@ public class SearchAnalyticsService {
 
         if (from != null && to != null) {
 
+            // ✅ Use system timezone (matches your DB: America/Chicago)
+            ZoneId zone = ZoneId.systemDefault();
+
+            OffsetDateTime start = from
+                    .atStartOfDay()
+                    .atZone(zone)
+                    .toOffsetDateTime();
+
+            OffsetDateTime end = to
+                    .atTime(23, 59, 59, 999_999_999)
+                    .atZone(zone)
+                    .toOffsetDateTime();
+
             results = searchHistoryRepository.getDailySearchTrendsBetween(
-                    from,
-                    to
+                    start,
+                    end
             );
 
         } else {
